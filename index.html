@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Big Mountain 2025 — Showtime Selector (6 Dec)</title>
+
+<!-- html2canvas for download -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0f1115;
+    --panel:#0f1720;
+    --muted:#9aa5b1;
+    --accent:#ff4da6;
+    --glass: rgba(255,255,255,0.04);
+    --hour: 60px; /* 60px per hour (change scale here) */
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{
+    margin:0;
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+    background: linear-gradient(180deg,#07111b 0%, #0b1520 100%);
+    color:#e6eef6;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .wrap{
+    max-width:1300px;
+    margin:12px auto;
+    padding:14px;
+  }
+
+  header {
+    display:flex;
+    align-items:center;
+    gap:12px;
+    justify-content:space-between;
+    margin-bottom:12px;
+  }
+  h1{
+    font-size:20px;
+    margin:0;
+    font-weight:700;
+    letter-spacing:0.2px;
+  }
+  .date-pill{ display:flex; gap:8px; align-items:center; }
+  .pill{
+    background:var(--glass);
+    color:var(--muted);
+    padding:8px 12px;
+    border-radius:999px;
+    font-weight:600;
+    cursor:pointer;
+    font-size:13px;
+  }
+
+  .main{ display:grid; grid-template-columns: 1fr 360px; gap:18px; }
+
+  /* TIMELINE PANEL */
+  .timeline-panel{
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    border-radius:14px;
+    padding:14px;
+    box-shadow: 0 6px 24px rgba(3,6,10,0.6);
+    overflow:hidden;
+  }
+  .time-header{ display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+  .time-range{ background:var(--panel); padding:8px 12px; border-radius:10px; color:var(--muted); font-weight:600; font-size:14px; }
+
+  .timeline-area{ display:flex; gap:12px; align-items:flex-start; }
+
+  /* time axis */
+  .time-axis{ width:96px; flex:0 0 96px; padding-right:8px; }
+  .time-axis .tick{
+    height: calc(var(--hour));
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    color:var(--muted);
+    font-weight:700;
+    padding-right:10px;
+    border-bottom:1px dashed rgba(255,255,255,0.03);
+    font-size:13px;
+  }
+
+  /* stages area (horizontal scroll) */
+  .stages-scroll{ overflow:auto; -webkit-overflow-scrolling:touch; flex:1; }
+  .stages{ display:flex; gap:12px; min-width:1200px; padding-bottom:20px; }
+
+  .stage-col{
+    width:220px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.01), rgba(255,255,255,0.005));
+    border-radius:10px;
+    position:relative;
+    flex-shrink:0;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+    overflow:visible;
+  }
+  .stage-header{
+    position:sticky;
+    top:0;
+    z-index:20;
+    background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+    padding:10px;
+    border-radius:8px;
+    margin:8px;
+    text-align:center;
+    font-weight:800;
+    color:#eaf5ff;
+    font-size:13px;
+  }
+  .hour-slot{ height: calc(var(--hour)); border-bottom:1px dashed rgba(255,255,255,0.03); }
+
+  /* artist block */
+  .artist-block{
+    position:absolute;
+    left:10px;
+    right:10px;
+    border-radius:12px;
+    padding:8px 10px;
+    font-weight:800;
+    color:#061019;
+    cursor:pointer;
+    box-shadow: 0 6px 18px rgba(2,6,12,0.5);
+    opacity:0.98;
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:8px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    font-size:13px;
+  }
+
+  /* color per stage */
+  .stage-ferris .artist-block{ background: linear-gradient(90deg,#7fe3c4,#5bd0ff); color:#061019;}
+  .stage-block .artist-block{ background: linear-gradient(90deg,#ffb3c7,#ff7aa6); color:#061019;}
+  .stage-red .artist-block{ background: linear-gradient(90deg,#ffb06b,#ff7d4c); color:#061019;}
+  .stage-harn .artist-block{ background: linear-gradient(90deg,#ffd86a,#ffb36b); color:#061019;}
+  .stage-district .artist-block{ background: linear-gradient(90deg,#8fd6ff,#6fa0ff); color:#061019;}
+  .stage-lang .artist-block{ background: linear-gradient(90deg,#ff9fb3,#e76fff); color:#061019;}
+
+  .artist-block.selected{ outline:3px solid rgba(255,255,255,0.06); transform: translateY(-4px) scale(1.02); box-shadow: 0 16px 36px rgba(0,0,0,0.6); }
+
+  /* summary panel */
+  .summary{ background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:14px; border-radius:14px; position:sticky; top:18px; height:fit-content; }
+  .summary h3{ margin:0 0 8px 0; font-size:16px; color:#f2f7ff}
+  .sel-list{ display:flex; flex-direction:column; gap:8px; max-height:62vh; overflow:auto; padding-right:6px;}
+  .sel-item{ background:var(--glass); padding:8px 10px; border-radius:10px; display:flex; justify-content:space-between; align-items:center; gap:10px; color:var(--muted); font-weight:700; }
+  .sel-item .artist { color:#fff; font-weight:800 }
+  .summary .btn{ margin-top:12px; display:block; width:100%; padding:12px; border-radius:12px; background:linear-gradient(90deg,var(--accent),#a244ff); color:#08111a; font-weight:800; border:none; cursor:pointer; box-shadow:0 10px 26px rgba(162,68,255,0.12); }
+
+  .muted{ color:var(--muted); font-weight:600 }
+
+  @media (max-width:980px){
+    .main{ grid-template-columns:1fr; }
+    .summary{ position:relative; margin-top:12px; }
+    .stages{ min-width:1000px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Big Mountain 2025 — Showtime Selector</h1>
+    <div class="date-pill">
+      <div class="pill">6 ธ.ค. 2025</div>
+    </div>
+  </header>
+
+  <div class="main">
+    <!-- TIMELINE -->
+    <div class="timeline-panel" id="timelinePanel">
+      <div class="time-header">
+        <div class="time-range">เวลา: 12:00 — 03:00</div>
+        <div style="flex:1"></div>
+        <div class="muted">แตะชื่อศิลปินเพื่อเพิ่ม/ยกเลิกในตารางส่วนตัว</div>
+      </div>
+
+      <div class="timeline-area">
+        <div class="time-axis" id="timeAxis"></div>
+
+        <div class="stages-scroll">
+          <div class="stages" id="stagesContainer">
+            <!-- injected -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY -->
+    <aside class="summary" id="summaryPanel">
+      <h3>ตารางส่วนตัวของคุณ</h3>
+      <div class="muted" style="font-size:13px; margin-bottom:8px">วงที่เลือก (วันที่ 6 ธ.ค.)</div>
+      <div class="sel-list" id="selList"><div class="muted">ยังไม่มีการเลือก</div></div>
+      <button class="btn" id="downloadBtn">ดาวน์โหลดรูปสรุป</button>
+      <div style="margin-top:8px; font-size:12px; color:var(--muted)">• แตะที่ศิลปินเพื่อเพิ่ม/ยกเลิก • ดาวน์โหลดเป็น PNG</div>
+    </aside>
+  </div>
+</div>
+
+<script>
+/* ====== SCHEDULE DATA (จากข้อมูลคุณ) ======
+   คอลัมน์ตามลำดับ: FERRIS WHEEL, BLOCK, RED (REO), HARN, DISTRICT'S JAII, LANG
+================================================= */
+const schedule = {
+  "FERRIS WHEEL STAGE":[
+    {artist:"SLOT MACHINE", time:"16:45-17:45"},
+    {artist:"LOMOSONIC", time:"18:00-19:00"},
+    {artist:"Bank preeti", time:"19:45-20:15"},
+    {artist:"Potato", time:"21:45-22:45"},
+    {artist:"Bodyslam", time:"23:00-00:00"}
+  ],
+  "BLOCK STAGE":[
+    {artist:"Samui", time:"16:15-17:00"},
+    {artist:"Wolf howl", time:"17:15-17:45"},
+    {artist:"Diva la vie", time:"18:00-18:30"},
+    {artist:"Jaylerr", time:"18:45-19:45"},
+    {artist:"Fourth", time:"20:15-20:45"},
+    {artist:"Porxie", time:"21:00-21:45"},
+    {artist:"Perses", time:"22:00-22:45"},
+    {artist:"Lynk", time:"23:15-00:00"}
+  ],
+  "RED (REO) STAGE":[
+    {artist:"TILLY B", time:"16:10-16:55"},
+    {artist:"PUN", time:"17:10-17:55"},
+    {artist:"CHAMELEON", time:"18:10-18:55"},
+    {artist:"POLYCAT", time:"19:10-19:55"},
+    {artist:"SCRUBB", time:"20:10-20:55"},
+    {artist:"TATTOO", time:"21:10-21:55"},
+    {artist:"TIMETHAI", time:"22:10-22:55"},
+    {artist:"URBOYT", time:"23:10-23:55"}
+  ],
+  "HARN STAGE (BY PEPSI)":[
+    {artist:"SERIOUS BACON", time:"13:00-13:45"},
+    {artist:"TRANCE EFFECT", time:"14:15-15:00"},
+    {artist:"GUNCHARLIE", time:"15:30-16:15"},
+    {artist:"JAMES ALYN", time:"18:00-18:45"},
+    {artist:"WHAL & DOLPH", time:"19:15-20:00"},
+    {artist:"MIRRR", time:"20:30-21:15"},
+    {artist:"SAFEPLANET", time:"21:45-22:30"},
+    {artist:"PARADOX", time:"23:00-23:45"}
+  ],
+  "DISTRICT'S JAII STAGE":[
+    {artist:"TAITOSMITH", time:"13:00-13:45"},
+    {artist:"GANDHARVA", time:"14:30-15:15"},
+    {artist:"วิจิตรชน", time:"15:45-16:30"},
+    {artist:"RÉJIZZ", time:"17:00-17:45"},
+    {artist:"H3F", time:"18:15-19:00"},
+    {artist:"DESKTOP ERROR", time:"19:30-20:15"},
+    {artist:"HUGO", time:"20:45-21:30"},
+    {artist:"SRIRAJAH ROCHERS", time:"22:00-22:45"},
+    {artist:"สามานย์", time:"23:15-00:00"}
+  ],
+  "LANG STAGE":[
+    {artist:"YES INDEED", time:"15:00-15:30"},
+    {artist:"ROOFTOP", time:"16:00-16:45"},
+    {artist:"DE FLAMINGO", time:"17:15-18:00"},
+    {artist:"มานพ", time:"18:30-19:15"},
+    {artist:"แพร ชนา", time:"19:45-20:30"},
+    {artist:"เล็ก", time:"21:00-21:45"},
+    {artist:"มนัสสวี", time:"22:15-23:00"}
+  ]
+};
+
+/* Timeline settings */
+const TIMELINE_START = "12:00";
+const TIMELINE_END = "03:00"; // next day
+const pxPerMinute = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--hour'))/60;
+
+/* Utility: normalize times */
+function normTimeToMin(t){
+  t = String(t).trim().replace(/–|—/g,'-').replace(/\s+/g,'');
+  // expand hh -> hh:00 if needed
+  if(/^\d{1,2}$/.test(t)) t = t + ":00";
+  const m = t.match(/(\d{1,2}):?(\d{2})?/);
+  if(!m) return null;
+  const hh = parseInt(m[1],10);
+  const mm = parseInt(m[2]||"0",10);
+  return hh*60 + mm;
+}
+function parseRange(r){
+  if(!r) return null;
+  r = r.replace(/\s/g,'').replace(/–|—/g,'-');
+  const parts = r.split('-');
+  if(parts.length < 2) return null;
+  const s = normTimeToMin(parts[0]);
+  let e = normTimeToMin(parts[1]);
+  if(e === null || s === null) return null;
+  // crossing midnight
+  if(e <= s) e += 24*60;
+  return {start:s, end:e};
+}
+
+/* Build timeline UI */
+function buildTimeline(){
+  const stagesContainer = document.getElementById('stagesContainer');
+  const timeAxis = document.getElementById('timeAxis');
+  stagesContainer.innerHTML = '';
+  timeAxis.innerHTML = '';
+
+  const startMin = normTimeToMin(TIMELINE_START);
+  let endMin = normTimeToMin(TIMELINE_END);
+  if(endMin <= startMin) endMin += 24*60;
+  const totalMinutes = endMin - startMin;
+  const timelineHeight = totalMinutes * pxPerMinute;
+
+  // hour ticks
+  for(let m=startMin; m<=endMin; m+=60){
+    const tick = document.createElement('div');
+    tick.className='tick';
+    const hh = Math.floor((m % (24*60))/60);
+    const mm = m%60;
+    tick.textContent = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+    tick.style.height = 'calc(var(--hour))';
+    timeAxis.appendChild(tick);
+  }
+
+  // create columns in given order of schedule keys
+  for(const stageName of Object.keys(schedule)){
+    // class selection
+    let cls = 'stage-col';
+    if(/ferris/i.test(stageName)) cls += ' stage-ferris';
+    else if(/block/i.test(stageName)) cls += ' stage-block';
+    else if(/reo|red/i.test(stageName)) cls += ' stage-red';
+    else if(/harn/i.test(stageName)) cls += ' stage-harn';
+    else if(/district|jaii/i.test(stageName)) cls += ' stage-district';
+    else if(/lang/i.test(stageName)) cls += ' stage-lang';
+
+    const col = document.createElement('div');
+    col.className = cls;
+    col.style.minHeight = timelineHeight + 'px';
+
+    const header = document.createElement('div');
+    header.className = 'stage-header';
+    header.textContent = stageName;
+    col.appendChild(header);
+
+    // draw hour-slot placeholders
+    for(let m=startMin; m<endMin; m+=60){
+      const slot = document.createElement('div');
+      slot.className = 'hour-slot';
+      col.appendChild(slot);
+    }
+
+    // add artists
+    schedule[stageName].forEach(item => {
+      const range = parseRange(item.time);
+      if(!range) return;
+      let s = range.start;
+      let e = range.end;
+      // clamp start to timeline start if before
+      if(e <= startMin) return; // entirely before timeline
+      if(s < startMin) s = startMin;
+      // compute top and height
+      const top = (s - startMin) * pxPerMinute + 8; // +8 px padding
+      const height = Math.max(26, (e - s) * pxPerMinute - 6);
+      const block = document.createElement('div');
+      block.className = 'artist-block';
+      block.dataset.artist = item.artist;
+      block.dataset.time = item.time;
+      block.dataset.stage = stageName;
+      block.style.top = top + 'px';
+      block.style.height = height + 'px';
+      block.innerHTML = `<div style="overflow:hidden;text-overflow:ellipsis;">${item.artist}</div>
+                         <div style="font-size:12px;color:rgba(0,0,0,0.6);font-weight:700;">${formatLabel(item.time)}</div>`;
+      block.addEventListener('click', ()=>toggleSelect(block));
+      col.appendChild(block);
+    });
+
+    stagesContainer.appendChild(col);
+  }
+}
+
+function formatLabel(raw){
+  raw = raw.replace(/–|—/g,'-').trim();
+  const parts = raw.split('-');
+  if(parts.length === 2){
+    const a = parts[0].length<=2 ? parts[0]+':00' : parts[0];
+    const b = parts[1].length<=2 ? parts[1]+':00' : parts[1];
+    return a + ' — ' + b;
+  }
+  return raw;
+}
+
+/* Selection summary */
+let selections = [];
+function renderSelections(){
+  const selList = document.getElementById('selList');
+  selList.innerHTML = '';
+  if(selections.length===0){
+    const p = document.createElement('div');
+    p.className='muted';
+    p.textContent='ยังไม่มีการเลือก';
+    selList.appendChild(p);
+    return;
+  }
+  selections.forEach((s,i)=>{
+    const div = document.createElement('div');
+    div.className='sel-item';
+    div.innerHTML = `<div>
+        <div class="artist">${s.artist}</div>
+        <div style="font-size:12px;color:var(--muted)">${s.time} — ${s.stage}</div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button style="background:transparent;border:0;color:var(--muted);cursor:pointer" data-remove="${i}">ลบ</button>
+      </div>`;
+    selList.appendChild(div);
+  });
+}
+
+function toggleSelect(block){
+  const artist = block.dataset.artist;
+  const time = block.dataset.time;
+  const stage = block.dataset.stage;
+  const idx = selections.findIndex(s=>s.artist===artist && s.time===time && s.stage===stage);
+  if(idx>=0){
+    selections.splice(idx,1);
+    block.classList.remove('selected');
+  } else {
+    selections.push({artist,time,stage});
+    block.classList.add('selected');
+  }
+  renderSelections();
+}
+
+/* remove from summary */
+document.getElementById('selList').addEventListener('click', (e)=>{
+  const rem = e.target.getAttribute('data-remove');
+  if(rem!==null){
+    const idx = parseInt(rem,10);
+    const item = selections[idx];
+    // unselect corresponding block
+    const blocks = document.querySelectorAll('.artist-block');
+    blocks.forEach(b=>{
+      if(b.dataset.artist===item.artist && b.dataset.time===item.time && b.dataset.stage===item.stage){
+        b.classList.remove('selected');
+      }
+    });
+    selections.splice(idx,1);
+    renderSelections();
+  }
+});
+
+/* download summary (html2canvas) */
+document.getElementById('downloadBtn').addEventListener('click', async ()=>{
+  if(selections.length===0){
+    alert('ยังไม่ได้เลือกวงใด ๆ ครับ');
+    return;
+  }
+  const tmp = document.createElement('div');
+  tmp.style.width='1000px';
+  tmp.style.padding='20px';
+  tmp.style.background='#08111a';
+  tmp.style.color='#fff';
+  tmp.style.borderRadius='12px';
+  tmp.style.fontFamily='Inter, Arial, sans-serif';
+  tmp.innerHTML = `<h2 style="margin:0 0 12px 0">My BMMF Schedule — 6 ธ.ค. 2025</h2>`;
+  const list = document.createElement('div');
+  list.style.display='flex';
+  list.style.flexDirection='column';
+  list.style.gap='8px';
+  function parseStart(t){
+    const raw = t.split('-')[0].replace(/–|—/g,'-').trim();
+    const [hh,mm] = raw.split(':').map(x=>parseInt(x,10));
+    return hh*60 + (mm||0);
+  }
+  const sorted = [...selections].sort((a,b)=>parseStart(a.time)-parseStart(b.time));
+  sorted.forEach(s=>{
+    const r = document.createElement('div');
+    r.style.display='flex';
+    r.style.justifyContent='space-between';
+    r.style.alignItems='center';
+    r.style.padding='8px';
+    r.style.borderRadius='8px';
+    r.style.background='rgba(255,255,255,0.03)';
+    r.innerHTML = `<div style="font-weight:800">${s.artist}</div>
+                   <div style="text-align:right;color:#cfe6ff">${s.time} • ${s.stage}</div>`;
+    list.appendChild(r);
+  });
+  tmp.appendChild(list);
+  document.body.appendChild(tmp);
+  await new Promise(r=>setTimeout(r,220));
+  html2canvas(tmp, {scale:2, backgroundColor: null}).then(canvas=>{
+    const url = canvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'BMMF2025_my_schedule_6Dec.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    tmp.remove();
+  }).catch(err=>{
+    tmp.remove();
+    alert('เกิดข้อผิดพลาดตอนสร้างรูป: '+err.message);
+  });
+});
+
+/* init */
+buildTimeline();
+renderSelections();
+
+</script>
+</body>
+</html>
